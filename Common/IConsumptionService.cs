@@ -14,6 +14,8 @@ namespace Common
         void StartSession(SessionMeta meta);
 
         [OperationContract]
+        [FaultContract(typeof(DataFormatFault))]
+        [FaultContract(typeof(ValidationFault))]
         void PushSample(HourlyConsumptionSample sample);
 
         [OperationContract]
