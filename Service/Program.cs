@@ -17,7 +17,7 @@ namespace Service
                 Console.WriteLine("Servis je otvoren na: net.tcp://localhost:4000/ConsumptionService");
                 Console.WriteLine("Pritisni bilo koji taster za zatvaranje...");
                 Console.ReadKey();
-                host.Close();
+                host.Close(); // moze i bez, svakako bi ga Dispose zatvorio
             }
             Console.WriteLine("\nServis je zatvoren.");
             Console.ReadKey();
