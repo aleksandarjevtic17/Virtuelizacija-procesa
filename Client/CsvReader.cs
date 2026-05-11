@@ -8,33 +8,33 @@ namespace Client
 {
     public class CsvReader : IDisposable
     {
-        private StreamReader _reader;
-        private string _filePath;
-        private string _countryCode;
+        private StreamReader sr;
+        private string filePath;
+        private string countryCode;
 
-        // Indeksi kolona koje su nam potrebne (saznaju se iz header-a)
-        private int _idxUtcTimestamp = -1;
-        private int _idxCetCestTimestamp = -1;
-        private int _idxActual = -1;
-        private int _idxForecast = -1;
+        // Indeksi kolona koje su nam potrebne
+        private int idxUtcTimestamp = -1;
+        private int idxCetCestTimestamp = -1;
+        private int idxActual = -1;
+        private int idxForecast = -1;
 
         public CsvReader(string filePath, string countryCode)
         {
-            _filePath = filePath;
-            _countryCode = countryCode;
+            this.filePath = filePath;
+            this.countryCode = countryCode;
 
             if (!File.Exists(filePath))
             {
                 throw new FileNotFoundException($"CSV fajl ne postoji: {filePath}");
             }
 
-            _reader = new StreamReader(filePath);
+            sr = new StreamReader(filePath);
             ParseHeader();
         }
 
         private void ParseHeader()
         {
-            string headerLine = _reader.ReadLine();
+            string headerLine = sr.ReadLine();
             if (headerLine == null)
             {
                 throw new Exception("CSV fajl je prazan.");
@@ -42,38 +42,38 @@ namespace Client
 
             string[] columns = headerLine.Split(',');
 
-            string actualColumnName = $"{_countryCode}_load_actual_entsoe_transparency";
-            string forecastColumnName = $"{_countryCode}_load_forecast_entsoe_transparency";
+            string actualColumnName = $"{countryCode}_load_actual_entsoe_transparency";
+            string forecastColumnName = $"{countryCode}_load_forecast_entsoe_transparency";
 
             for (int i = 0; i < columns.Length; i++)
             {
-                if (columns[i] == "utc_timestamp") _idxUtcTimestamp = i;
-                else if (columns[i] == "cet_cest_timestamp") _idxCetCestTimestamp = i;
-                else if (columns[i] == actualColumnName) _idxActual = i;
-                else if (columns[i] == forecastColumnName) _idxForecast = i;
+                if (columns[i] == "utc_timestamp") idxUtcTimestamp = i;
+                else if (columns[i] == "cet_cest_timestamp") idxCetCestTimestamp = i;
+                else if (columns[i] == actualColumnName) idxActual = i;
+                else if (columns[i] == forecastColumnName) idxForecast = i;
             }
 
-            // Greska konfiguracije: ako za zemlju ne postoje obe kolone
-            if (_idxActual == -1 || _idxForecast == -1)
+            // Greska konfiguracije ako za zemlju ne postoje obe kolone
+            if (idxActual == -1 || idxForecast == -1)
             {
-                throw new Exception($"Greska konfiguracije: za zemlju '{_countryCode}' ne postoje kolone '{actualColumnName}' i/ili '{forecastColumnName}' u CSV fajlu.");
+                throw new Exception($"Greska konfiguracije: za zemlju '{countryCode}' ne postoje kolone '{actualColumnName}' i/ili '{forecastColumnName}' u CSV fajlu.");
             }
 
-            if (_idxUtcTimestamp == -1 || _idxCetCestTimestamp == -1)
+            if (idxUtcTimestamp == -1 || idxCetCestTimestamp == -1)
             {
                 throw new Exception("Greska konfiguracije: u CSV fajlu nedostaju kolone 'utc_timestamp' ili 'cet_cest_timestamp'.");
             }
         }
 
-        // Vraca jedan po jedan red iz CSV-a (uz pomoc yield)
+        // Vraca jedan po jedan red da ne bismo ucitavali ceo CSV file
         public IEnumerable<CsvRow> ReadRows()
         {
             string line;
             int rowIndex = 0;
-            while ((line = _reader.ReadLine()) != null)
+            while ((line = sr.ReadLine()) != null)
             {
                 rowIndex++;
-                yield return new CsvRow
+                yield return new CsvRow 
                 {
                     RowIndex = rowIndex,
                     RawLine = line,
@@ -82,22 +82,22 @@ namespace Client
             }
         }
 
-        public int IdxUtcTimestamp => _idxUtcTimestamp;
-        public int IdxCetCestTimestamp => _idxCetCestTimestamp;
-        public int IdxActual => _idxActual;
-        public int IdxForecast => _idxForecast;
+        public int IdxUtcTimestamp => idxUtcTimestamp;
+        public int IdxCetCestTimestamp => idxCetCestTimestamp;
+        public int IdxActual => idxActual;
+        public int IdxForecast => idxForecast;
 
         public void Dispose()
         {
-            if (_reader != null)
+            if (sr != null)
             {
-                _reader.Dispose();
-                _reader = null;
+                sr.Dispose();
+                sr = null;
             }
         }
     }
 
-    // Pomocna klasa - jedan procitani red iz CSV-a (jos ne parsiran u sample)
+    // Pomocna klasa za jedan procitani red iz CSV fajla
     public class CsvRow
     {
         public int RowIndex { get; set; }

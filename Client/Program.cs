@@ -40,8 +40,7 @@ namespace Client
                 rejectedWriter = new StreamWriter("rejected_client.csv", false);
                 rejectedWriter.WriteLine("RowIndex,Razlog,OriginalniRed");
 
-                // Prvo: prolazak kroz CSV da prebrojimo koliko redova pripada odabranom danu
-                // (treba nam za TotalSamples u meta-i)
+                // Prebrojimo koliko redova pripada odabranom danu
                 int totalForDay = CountRowsForDay(csvPath, countryCode, selectedDate);
                 Console.WriteLine($"Pronadjeno {totalForDay} redova za odabrani dan.");
 
@@ -55,7 +54,7 @@ namespace Client
                 factory = new ChannelFactory<IConsumptionService>("ConsumptionServiceEndpoint");
                 proxy = factory.CreateChannel();
 
-                // StartSession
+                // Pocetak sesije
                 SessionMeta meta = new SessionMeta
                 {
                     CountryCode = countryCode,
@@ -193,8 +192,11 @@ namespace Client
             }
             finally
             {
-                if (csvReader != null) csvReader.Dispose();
-                if (rejectedWriter != null) rejectedWriter.Dispose();
+                if (csvReader != null) 
+                    csvReader.Dispose();
+
+                if (rejectedWriter != null) 
+                    rejectedWriter.Dispose();
 
                 if (proxy != null)
                 {
@@ -219,7 +221,7 @@ namespace Client
             writer.WriteLine($"{row.RowIndex},\"{safeReason}\",\"{row.RawLine}\"");
         }
 
-        // Pomocna metoda: prebroji redove za odabrani dan (da bismo znali TotalSamples)
+        // Brojimo redove za odabrani dan da bismo znali TotalSamples
         private static int CountRowsForDay(string csvPath, string countryCode, DateTime selectedDate)
         {
             int count = 0;
