@@ -7,20 +7,30 @@ using System.ServiceModel;
 
 namespace Service
 {
-    internal class Program
+    class Program
     {
-        static void Main(string[] args)
+        static void Main()
         {
-            using (ServiceHost host = new ServiceHost(typeof(ConsumptionService)))
-            {
-                host.Open();
-                Console.WriteLine("Servis je otvoren na: net.tcp://localhost:4000/ConsumptionService");
-                Console.WriteLine("Pritisni bilo koji taster za zatvaranje...");
-                Console.ReadKey();
-                host.Close(); // moze i bez, svakako bi ga Dispose zatvorio
-            }
-            Console.WriteLine("\nServis je zatvoren.");
-            Console.ReadKey();
+            ConsumptionService serviceInstance = new ConsumptionService();
+
+            // Pretplate na evente
+            serviceInstance.OnTransferStarted += (s, e) =>
+                Console.WriteLine($">>> [EVENT] Prenos poceo: {e.CountryCode} {e.Date:yyyy-MM-dd}, ukupno {e.TotalSamples} uzoraka");
+
+            serviceInstance.OnSampleReceived += (s, e) =>
+                Console.WriteLine($">>> [EVENT] Uzorak primljen: {e.ReceivedCount}/{e.TotalSamples} ({e.PercentDone:F1}%)");
+
+            serviceInstance.OnTransferCompleted += (s, e) =>
+                Console.WriteLine($">>> [EVENT] Prenos zavrsen! Primljeno {e.TotalReceived}/{e.TotalSamples}");
+
+            serviceInstance.OnWarningRaised += (s, e) =>
+                Console.WriteLine($">>> [EVENT][{e.WarningType}] {e.Message}");
+
+            ServiceHost host = new ServiceHost(serviceInstance);
+            host.Open();
+            Console.WriteLine("Servis pokrenut. Pritisni Enter za izlaz...");
+            Console.ReadLine();
+            host.Close();
         }
     }
 }
