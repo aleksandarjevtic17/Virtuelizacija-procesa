@@ -2,7 +2,7 @@
   <Folder Name="/Solution Items/">
     <File Path=".gitignore" />
   </Folder>
-  <Project Path="Client/Client.csproj" />
-  <Project Path="Common/Common.csproj" />
-  <Project Path="Service/Service.csproj" />
+  <Project Path="Client/Client.csproj" Id="4278daa3-c575-484b-952e-2867ed00820a" />
+  <Project Path="Common/Common.csproj" Id="b219ae10-49d4-4cb1-9c7c-2be0eb262e03" />
+  <Project Path="Service/Service.csproj" Id="2ac97537-d7b2-4e48-84d3-5fa012b66341" />
 </Solution>
