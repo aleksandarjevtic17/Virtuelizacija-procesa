@@ -13,9 +13,13 @@ namespace Service
         private StreamWriter _rejectsWriter;
         private SessionMeta _meta;
 
+        // NOVO: pratimo broj primljenih uzoraka
+        private int _receivedCount = 0;
+
         public void StartSession(SessionMeta meta)
         {
             _meta = meta;
+            _receivedCount = 0; // resetujemo brojac pri novoj sesiji
 
             string dir = Path.Combine("Data", meta.CountryCode, meta.Date.ToString("yyyy-MM-dd"));
             Directory.CreateDirectory(dir);
@@ -47,7 +51,6 @@ namespace Service
                 throw new FaultException<DataFormatFault>(fault, new FaultReason("Format nije ispravan"));
             }
 
-            // sample ne postoji
             if (sample == null)
             {
                 WriteReject(-1, "Primljen prazan (null) podatak.", "(null)");
@@ -57,7 +60,6 @@ namespace Service
 
             string originalLine = FormatSampleLine(sample);
 
-            // CountryCode mora biti popunjen
             if (string.IsNullOrWhiteSpace(sample.CountryCode))
             {
                 WriteReject(sample.RowIndex, "CountryCode je prazan.", originalLine);
@@ -65,7 +67,6 @@ namespace Service
                 throw new FaultException<DataFormatFault>(fault, new FaultReason("Format nije ispravan"));
             }
 
-            // Timestamp mora biti smislen (ne sme biti default DateTime - 1.1.0001)
             if (sample.TimestampUtc == default(DateTime))
             {
                 WriteReject(sample.RowIndex, "TimestampUtc nije postavljen.", originalLine);
@@ -73,7 +74,6 @@ namespace Service
                 throw new FaultException<DataFormatFault>(fault, new FaultReason("Format nije ispravan"));
             }
 
-            // Validacija: Hour u opsegu 0-23
             if (sample.Hour < 0 || sample.Hour > 23)
             {
                 string reason = $"Hour van opsega [0,23]. Primljeno: {sample.Hour}";
@@ -82,7 +82,6 @@ namespace Service
                 throw new FaultException<ValidationFault>(fault, new FaultReason("Validacija nije prosla"));
             }
 
-            // Validacija: ActualMW >= 0
             if (sample.ActualMW < 0)
             {
                 string reason = $"ActualMW mora biti >= 0. Primljeno: {sample.ActualMW}";
@@ -91,7 +90,6 @@ namespace Service
                 throw new FaultException<ValidationFault>(fault, new FaultReason("Validacija nije prosla"));
             }
 
-            // Validacija: ForecastMW >= 0
             if (sample.ForecastMW < 0)
             {
                 string reason = $"ForecastMW mora biti >= 0. Primljeno: {sample.ForecastMW}";
@@ -100,16 +98,24 @@ namespace Service
                 throw new FaultException<ValidationFault>(fault, new FaultReason("Validacija nije prosla"));
             }
 
-            // Validan red - upisujemo u session.csv
+            // validan red - upisujem
             _sessionWriter.WriteLine(originalLine);
-            Console.WriteLine($"[PushSample] Sat={sample.Hour}, Actual={sample.ActualMW} MW, Forecast={sample.ForecastMW} MW");
+            // uvecavam brojac i ispisujemo status "prenos u toku"
+            _receivedCount++;
+            double procenat = (_meta != null && _meta.TotalSamples > 0) ? (double)_receivedCount / _meta.TotalSamples * 100.0 : 0.0;
+            Console.WriteLine($"[PRENOS U TOKU] Primljeno: {_receivedCount}/{_meta?.TotalSamples ?? 0} uzoraka ({procenat:F1}%) | Sat={sample.Hour}, Actual={sample.ActualMW} MW");
         }
 
         public void EndSession()
         {
             if (_sessionWriter != null) { _sessionWriter.Flush(); _sessionWriter.Dispose(); _sessionWriter = null; }
             if (_rejectsWriter != null) { _rejectsWriter.Flush(); _rejectsWriter.Dispose(); _rejectsWriter = null; }
-            Console.WriteLine("[EndSession] Sesija zavrsena. Fajlovi sacuvani.");
+
+            //ispis "prenos završen" sa finalnim brojevima
+            int total = _meta?.TotalSamples ?? 0;
+            double finProcenat = (total > 0) ? (double)_receivedCount / total * 100.0 : 0.0;
+            Console.WriteLine($"[PRENOS ZAVRSEN] Ukupno primljeno: {_receivedCount}/{total} uzoraka ({finProcenat:F1}%)");
+            Console.WriteLine("[EndSession] Sesija zavrsena.");
         }
 
         private void WriteReject(int rowIndex, string reason, string originalLine)
