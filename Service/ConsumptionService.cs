@@ -29,6 +29,7 @@ namespace Service
         private readonly double _dailyLimitMW;
 
         private double _previousActualMW = double.NaN;
+        private bool _dailyLimitWarningRaised = false;
 
         public ConsumptionService()
         {
@@ -46,6 +47,7 @@ namespace Service
             _receivedCount = 0;
             _dailyTotalMW = 0;
             _previousActualMW = double.NaN;
+            _dailyLimitWarningRaised = false;
 
             string dir = Path.Combine("Data", meta.CountryCode, meta.Date.ToString("yyyy-MM-dd"));
             Directory.CreateDirectory(dir);
@@ -180,7 +182,47 @@ namespace Service
             if (double.IsNaN(sample.ActualMW) || double.IsNaN(sample.ForecastMW))
                 return;
 
-            // Ignorisi ako je ForecastMW nula (dijeljenje s nulom)
+            // Spike — ne ovisi o ForecastMW, provjerava se prije
+            if (!double.IsNaN(_previousActualMW))
+            {
+                double delta = sample.ActualMW - _previousActualMW;
+                if (Math.Abs(delta) > _spikeDeltaMW)
+                {
+                    string smjer = delta > 0 ? "PORAST" : "PAD";
+                    string msg = $"[ConsumptionSpike] Sat={sample.Hour}, delta={delta:F1} MW ({smjer}), prethodni={_previousActualMW} MW, trenutni={sample.ActualMW} MW, MeterID={sample.MeterID}";
+                    Console.WriteLine(msg);
+                    OnWarningRaised?.Invoke(this, new WarningRaisedEventArgs
+                    {
+                        WarningType = "ConsumptionSpike",
+                        Message = msg,
+                        Sample = sample,
+                        Hour = sample.Hour,
+                        ActualMW = sample.ActualMW,
+                        ForecastMW = sample.ForecastMW,
+                        MeterID = sample.MeterID
+                    });
+                }
+            }
+
+            // DailyLimit — ne ovisi o ForecastMW, okida se samo jednom
+            if (!_dailyLimitWarningRaised && _dailyTotalMW > _dailyLimitMW)
+            {
+                _dailyLimitWarningRaised = true;
+                string msg = $"[DailyLimitExceeded] Kumulativno={_dailyTotalMW:F1} MW > limit={_dailyLimitMW} MW, MeterID={sample.MeterID}";
+                Console.WriteLine(msg);
+                OnWarningRaised?.Invoke(this, new WarningRaisedEventArgs
+                {
+                    WarningType = "DailyLimitExceeded",
+                    Message = msg,
+                    Sample = sample,
+                    Hour = sample.Hour,
+                    ActualMW = sample.ActualMW,
+                    ForecastMW = sample.ForecastMW,
+                    MeterID = sample.MeterID
+                });
+            }
+
+            // Under/OverConsumption zahtijevaju validan ForecastMW
             if (sample.ForecastMW <= 0)
                 return;
 
@@ -217,44 +259,8 @@ namespace Service
                     MeterID = sample.MeterID
                 });
             }
-
-            // Spike i DailyLimit ostaju isti kao prije
-            if (!double.IsNaN(_previousActualMW))
-            {
-                double delta = Math.Abs(sample.ActualMW - _previousActualMW);
-                if (delta > _spikeDeltaMW)
-                {
-                    string msg = $"[Spike] Sat={sample.Hour}, delta={delta:F1} MW > {_spikeDeltaMW} MW";
-                    Console.WriteLine(msg);
-                    OnWarningRaised?.Invoke(this, new WarningRaisedEventArgs
-                    {
-                        WarningType = "Spike",
-                        Message = msg,
-                        Sample = sample,
-                        Hour = sample.Hour,
-                        ActualMW = sample.ActualMW,
-                        ForecastMW = sample.ForecastMW,
-                        MeterID = sample.MeterID
-                    });
-                }
-            }
-
-            if (_dailyTotalMW > _dailyLimitMW)
-            {
-                string msg = $"[DailyLimit] Kumulativno={_dailyTotalMW:F1} MW > limit={_dailyLimitMW} MW";
-                Console.WriteLine(msg);
-                OnWarningRaised?.Invoke(this, new WarningRaisedEventArgs
-                {
-                    WarningType = "DailyLimit",
-                    Message = msg,
-                    Sample = sample,
-                    Hour = sample.Hour,
-                    ActualMW = sample.ActualMW,
-                    ForecastMW = sample.ForecastMW,
-                    MeterID = sample.MeterID
-                });
-            }
         }
+        
 
 
         private void WriteReject(int rowIndex, string reason, string originalLine)
