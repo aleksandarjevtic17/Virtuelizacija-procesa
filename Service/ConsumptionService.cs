@@ -176,62 +176,86 @@ namespace Service
 
         private void CheckWarnings(HourlyConsumptionSample sample)
         {
-            // 1. UnderConsumption: Actual < Alpha * Forecast
-            if (sample.ForecastMW > 0 && sample.ActualMW < _underConsumptionAlpha * sample.ForecastMW)
+            // Ignorisi uzorke sa NaN vrijednostima
+            if (double.IsNaN(sample.ActualMW) || double.IsNaN(sample.ForecastMW))
+                return;
+
+            // Ignorisi ako je ForecastMW nula (dijeljenje s nulom)
+            if (sample.ForecastMW <= 0)
+                return;
+
+            // UnderConsumption
+            if (sample.ActualMW < _underConsumptionAlpha * sample.ForecastMW)
             {
-                string msg = $"[UPOZORENJE] UnderConsumption: Sat={sample.Hour}, Actual={sample.ActualMW} MW < {_underConsumptionAlpha} * Forecast={sample.ForecastMW} MW";
+                string msg = $"[UnderConsumption] Sat={sample.Hour}, Actual={sample.ActualMW} MW < {_underConsumptionAlpha} * Forecast={sample.ForecastMW} MW, MeterID={sample.MeterID}";
                 Console.WriteLine(msg);
                 OnWarningRaised?.Invoke(this, new WarningRaisedEventArgs
                 {
                     WarningType = "UnderConsumption",
                     Message = msg,
-                    Sample = sample
+                    Sample = sample,
+                    Hour = sample.Hour,
+                    ActualMW = sample.ActualMW,
+                    ForecastMW = sample.ForecastMW,
+                    MeterID = sample.MeterID
                 });
             }
 
-            // 2. OverConsumption: Actual > Beta * Forecast
-            if (sample.ForecastMW > 0 && sample.ActualMW > _overConsumptionBeta * sample.ForecastMW)
+            // OverConsumption
+            if (sample.ActualMW > _overConsumptionBeta * sample.ForecastMW)
             {
-                string msg = $"[UPOZORENJE] OverConsumption: Sat={sample.Hour}, Actual={sample.ActualMW} MW > {_overConsumptionBeta} * Forecast={sample.ForecastMW} MW";
+                string msg = $"[OverConsumption] Sat={sample.Hour}, Actual={sample.ActualMW} MW > {_overConsumptionBeta} * Forecast={sample.ForecastMW} MW, MeterID={sample.MeterID}";
                 Console.WriteLine(msg);
                 OnWarningRaised?.Invoke(this, new WarningRaisedEventArgs
                 {
                     WarningType = "OverConsumption",
                     Message = msg,
-                    Sample = sample
+                    Sample = sample,
+                    Hour = sample.Hour,
+                    ActualMW = sample.ActualMW,
+                    ForecastMW = sample.ForecastMW,
+                    MeterID = sample.MeterID
                 });
             }
 
-            // 3. Spike: razlika od prethodnog sata > SpikeDeltaMW
+            // Spike i DailyLimit ostaju isti kao prije
             if (!double.IsNaN(_previousActualMW))
             {
                 double delta = Math.Abs(sample.ActualMW - _previousActualMW);
                 if (delta > _spikeDeltaMW)
                 {
-                    string msg = $"[UPOZORENJE] Spike: Sat={sample.Hour}, delta={delta:F1} MW > {_spikeDeltaMW} MW (prethodni={_previousActualMW}, trenutni={sample.ActualMW})";
+                    string msg = $"[Spike] Sat={sample.Hour}, delta={delta:F1} MW > {_spikeDeltaMW} MW";
                     Console.WriteLine(msg);
                     OnWarningRaised?.Invoke(this, new WarningRaisedEventArgs
                     {
                         WarningType = "Spike",
                         Message = msg,
-                        Sample = sample
+                        Sample = sample,
+                        Hour = sample.Hour,
+                        ActualMW = sample.ActualMW,
+                        ForecastMW = sample.ForecastMW,
+                        MeterID = sample.MeterID
                     });
                 }
             }
 
-            // 4. DailyLimit: kumulativna suma za dan > DailyLimitMW
             if (_dailyTotalMW > _dailyLimitMW)
             {
-                string msg = $"[UPOZORENJE] DailyLimit: Kumulativno={_dailyTotalMW:F1} MW > limit={_dailyLimitMW} MW";
+                string msg = $"[DailyLimit] Kumulativno={_dailyTotalMW:F1} MW > limit={_dailyLimitMW} MW";
                 Console.WriteLine(msg);
                 OnWarningRaised?.Invoke(this, new WarningRaisedEventArgs
                 {
                     WarningType = "DailyLimit",
                     Message = msg,
-                    Sample = sample
+                    Sample = sample,
+                    Hour = sample.Hour,
+                    ActualMW = sample.ActualMW,
+                    ForecastMW = sample.ForecastMW,
+                    MeterID = sample.MeterID
                 });
             }
         }
+
 
         private void WriteReject(int rowIndex, string reason, string originalLine)
         {

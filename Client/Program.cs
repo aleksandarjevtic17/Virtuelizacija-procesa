@@ -162,7 +162,8 @@ namespace Client
                         ActualMW = actualMW,
                         ForecastMW = forecastMW,
                         CountryCode = countryCode,
-                        RowIndex = row.RowIndex
+                        RowIndex = row.RowIndex,
+                        MeterID = $"{countryCode}_{utcTime:yyyyMMdd}_{utcTime.Hour:D2}"  // npr. DE_20180923_00
                     };
 
                     try

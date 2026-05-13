@@ -30,5 +30,7 @@ namespace Common
 
         [DataMember]
         public int RowIndex { get; set; }
+        [DataMember]
+        public string MeterID { get; set; }
     }
 }

@@ -30,8 +30,14 @@ namespace Common
 
     public class WarningRaisedEventArgs : EventArgs
     {
-        public string WarningType { get; set; }   // "UnderConsumption", "OverConsumption", "Spike", "DailyLimit"
+        public string WarningType { get; set; }
         public string Message { get; set; }
         public HourlyConsumptionSample Sample { get; set; }
+
+        // Eksplicitna polja koja zadatak traži u eventu k2 z4
+        public int Hour { get; set; }
+        public double ActualMW { get; set; }
+        public double ForecastMW { get; set; }
+        public string MeterID { get; set; }
     }
 }
